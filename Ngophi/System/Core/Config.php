@@ -1,19 +1,21 @@
 <?php
-/**
-* 
-*/
 namespace System\Core;
 class Config 
 {
-	public static function Configs()
+	private static $config;
+	public static function All()
 	{
-		return (require APPLICATION_PATH .'Configs/App.php');
+		if(!isset(self::$config))
+			self::$config = (require APPLICATION_PATH .'Configs/App.php');
+
+		return self::$config;
 	}
-	static function  get($key)
+
+	static function get($key)
 	{
-		if(!array_key_exists($key,self::Configs()))
-			throw new RuntimeError("Config " . $key . ' not found!');
+		if(!array_key_exists($key,self::All()))
+			throw new Exception\RuntimeException('Config "' . $key . '" not found!');
 		
-		return self::Configs()[$key];
+		return self::All()[$key];
 	}
 }

@@ -1,15 +1,5 @@
 <?php
-
-/*
- * Mogh PHP Framework
- * Create & Developed By whintz 
- * https://github.com/momogie/Mogh
-*/
-
 namespace System\Core;
-/**
-* Handle HTTP Request
-*/
 class Request
 {
 	/**

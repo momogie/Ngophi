@@ -1,14 +1,5 @@
-
-<?php session_start();?>
-<?php
-
-/*
- * Mogh PHP Framework
- * Create & Developed By whintz 
- * https://github.com/momogie/Mogh
-*/
+<?php 
 namespace System\Core;
-
 class Session
 {
 	
@@ -18,27 +9,24 @@ class Session
 	}
 	public static function init()
 	{
-		if (session_status() == 1) {		    
+		if (session_status() == 1) 
+		{		    
 			session_start();
 		}
 	}
 	public static function destroy()
 	{
-		if (session_status() == PHP_SESSION_ACTIVE) {		    
+		if (session_status() == PHP_SESSION_ACTIVE) 
+		{		    
 			session_destroy();
 		}
 	}
 	public static function get($key)
 	{
-		//self::init();
-		//please decrypt your encrypted session
-		return isset($_SESSION[$key]) ? $_SESSION[$key] : null;
+		return isset($_SESSION[$key]) ? $_SESSION[$key] : '';
 	}
 	public static function set($key,$value)
 	{	
-		//self::init();
-		//self::init();
-		//please encrypt your session
 		$_SESSION[$key] = $value;
 	}
 }

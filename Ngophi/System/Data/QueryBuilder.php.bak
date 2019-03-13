@@ -1,0 +1,297 @@
+<?php
+namespace System\Data;
+abstract class QueryBuilder implements IQueryBuilder
+{
+    protected $config;
+    public static $db;
+    protected $query =[
+        'declare'       => '',
+        'statement'     => '',
+        'clause'        => '',
+        'table'         => '',
+        'join'          => '',
+        'where'         => ' WHERE 1=1 ',
+        'clause2'       => '',
+        'groupby'       => '',
+        'orderby'       => '',
+        'offset'        => '',
+        'statement'     => ''
+    ];
+
+    private function build(string $key, string $value,bool $reset = false)
+    {
+        static $query;
+        if($reset)
+        {
+            $query =[
+                'declare'       => '',
+                'statement'     => '',
+                'clause'        => '',
+                'table'         => '',
+                'join'          => '',
+                'where'         => ' WHERE 1=1 ',
+                'clause2'       => '',
+                'groupby'       => '',
+                'orderby'       => '',
+                'offset'        => '',
+                'statement'     => ''
+            ];
+        }
+        $query[$key] = $value;
+
+        return implode(" ",  $query);
+    }
+
+    public function from(string $tablename,string $alias = '')
+    {
+        $this->query['table'] = $tablename . ' ' . $alias;
+        return $this; 
+    }
+    public function declare($name,$data_type = 'varchar(100)' , $value = '')
+    {
+        $this->query['declare'] .= 'declare @' . $name . ' ' . $data_type .' = ' . '('. $value .');';
+
+        return $this;
+    }
+    public function join(string $from,string $alias = '')
+    {
+        $this->query['join'] .= ' JOIN ' . $from .' ' . $alias;
+        return $this;
+    }
+
+    public function leftjoin(string $from,string $alias = '')
+    {
+        $this->query['join'] .= 'LEFT JOIN ' . $from .' ' . $alias;
+        return $this;
+    }
+
+    public function rightjoin(string $from,string $alias = '')
+    {
+        $this->query['join'] .= 'RIGHT JOIN ' . $from .' ' . $alias;
+        return $this;
+    }
+
+    public function fulljoin(string $from,string $alias = '')
+    {
+        $this->query['join'] .= 'FULL OUTER JOIN ' . $from .' ' . $alias;
+        return $this;
+    }
+
+    public function on($key1,$key2=null)
+    {
+        
+        if(isset($key1) && isset($key2)) $this->query['join'] .= ' ON ' . $key1 . ' = ' . $key2;
+        
+        if(isset($key1) && !isset($key2))
+        {
+            if(is_array($key1) && !array_key_exists(0,$key1))
+                 $this->query['join']  .= ' ON ' .implode(' AND ', array_map(
+                    function ($v, $k) { return sprintf("%s = %s" ,$k, $v); },
+                    $key1,
+                    array_keys($key1)
+                ));
+        }   
+     
+        return $this;
+    }
+    public function where($w1,$w2=null,$w3=null)
+    {
+        if(isset($w1) && isset($w2) && isset($w3)) 
+        {
+            $this->query['where'] .= ' AND ' . $w1 . ' ' . $w2 . ' ' . "'". Database::SqlSafe($w3) ."'";
+
+        }
+
+        if(isset($w1) && isset($w2) && !isset($w3))
+        {
+            $this->query['where'] .= ' AND ' . $w1 . ' = ' . "'". Database::SqlSafe($w2) ."'";
+        }
+
+        if(isset($w1) && !isset($w2)&& !isset($w3))
+        {
+            if(is_array($w1) && !array_key_exists(0,$w1))
+             $this->query['where']  .= ' AND ' . implode(' and ', array_map(
+                function ($v, $k) { return sprintf("%s = '%s'" ,$k,  Database::SqlSafe($v)); },
+                $w1,
+                array_keys($w1)
+            ));
+            else
+               $this->query['where']  .= ' AND ' . $w1; 
+        }   
+        return $this;
+    }
+
+    public function groupby(string $groupby)
+    {
+        $this->query['groupby'] = ' GROUP BY ' . $groupby;
+        return $this;
+    }
+
+    public function orderby(string $orderby,string $order = 'ASC')
+    {
+        $this->query['orderby'] = ' ORDER BY ' . $orderby .' '. $order;
+        return $this;
+    }
+
+    public function ordernext(string $orderby,string $order = 'ASC')
+    {
+        $this->query['orderby'] .= ' ,' . $orderby .' '. $order;
+        return $this;
+    }
+
+    public function All()
+    {
+        $this->query['statement'] = 'SELECT ' . $this->query['clause'] . ' * FROM ';
+
+        $this->query['clause'] ='';
+        return self::$db->ResultSetToClass(implode(" ", $this->query),__NAMESPACE__ . '\\' . 'Row');
+    }
+
+    public function get($data=null,$count = null)
+    {
+        $select='*';
+        if (isset($data))
+        {
+            if (is_array($data) && !array_key_exists(0,$data))
+                $select = implode(', ', array_map(
+                    function ($v, $k) { return sprintf("%s as %s", $v ,$k); },
+                    $data,
+                    array_keys($data)
+                ));
+            elseif (is_array($data)) $select = implode(' , ', $data);
+            
+            elseif (isset($data)) $select = $data;
+        
+        }    
+        
+        if(is_numeric($count))  $this->Take($count);
+
+        $this->query['statement'] = 'SELECT ' . $this->query['clause'] . ' ' . $select .' FROM ';
+        $this->query['clause'] = '';
+        return $this;
+    }
+
+    public function each($callback)
+    {
+        $this->get();
+        $result = self::$db->ResultSetToClass(implode(" ", $this->query),__NAMESPACE__ . '\\' . 'Row');
+        foreach ($result as $key => $value) 
+        {
+            call_user_func_array($callback, [$value,$key]);
+        }
+    }
+
+    public function select($data=null)
+    {
+        $this->get($data);
+        return self::$db->ResultSetToClass(implode(" ", $this->query),__NAMESPACE__ . '\\' . 'Row');
+    }
+
+    public function first($data=null)
+    {
+        $this->get($data);
+        return self::$db->FirstToClass(implode(" ", $this->query),__NAMESPACE__ . '\\' . 'Row');
+    }
+
+    public function take(int $count=0)
+    {
+        switch(strtolower($this->config["DB_DRIVER"]))
+        {
+            case 'sqlsrv':
+                $this->query['clause'] = 'TOP ' . $count;
+                break;
+            case 'mysql':
+                $this->query['clause2'] = 'LIMIT ' . $count;
+                break;
+            case 'oci':
+                $this->query['clause2'] = 'WHERE ROWNUM <= ' . $count;
+                break;
+        }
+       
+        return $this;
+    }
+
+    public function count(string $columnname ='*')
+    {
+        $this->query['statement'] = 'SELECT COUNT(' . $columnname . ') FROM';
+        return self::$db->GetSingle(implode(" ", $this->query));
+    }
+
+    public function Any()
+    {
+        $this->query['statement'] = 'SELECT COUNT(*) FROM ';
+        return self::$db->GetSingle(implode(" ", $this->query)) > 0;
+    }
+
+    public function distinct(string $columnname ='0')
+    {
+        $this->query['statement'] = 'SELECT DISTINCT(' . $columnname . ') FROM';
+        return self::$db->ResultSet(implode(" ", $this->query));
+    }
+
+    public function average(string $columnname ='0')
+    {
+        $this->query['statement'] = 'SELECT AVG(' . $columnname . ') FROM';
+        return self::$db->GetSingle(implode(" ", $this->query));
+    }
+
+    public function min(string $columnname ='0')
+    {
+        $this->query['statement'] = 'SELECT MIN(' . $columnname . ') FROM';
+        return self::$db->GetSingle(implode(" ", $this->query));
+    }
+
+    public function max(string $columnname ='0')
+    {
+        $this->query['statement'] = 'SELECT MAX(' . $columnname . ') FROM';
+        return self::$db->GetSingle(implode(" ", $this->query));
+    }
+
+    public function sum(string $columnname ='0')
+    {
+        $this->query['statement'] = 'SELECT ISNULL(sum(' . $columnname . '),0) FROM';
+        return self::$db->GetSingle(implode(" ", $this->query));
+    }
+
+    public function delete()
+    {
+        $this->statement = 'DELETE FROM ';
+        $stmt = self::$db->prepare(implode(" ", $this->query));
+        return $stmt->execute();
+    }
+
+    public function insert(array $data)
+    {
+        $this->query['statement'] = 'INSERT INTO ' . $this->query['table'] . ' ( '. implode(' , ', array_keys($data)) .' ) VALUES (:' .implode(', :', array_keys($data)). ')' ;
+
+        $this->query['table'] ="";
+        $this->query['where'] ="";
+
+        $stmt = self::$db->prepare(implode(" ", $this->query));
+       
+        return $stmt->execute($data);
+    }
+    public function update(array $data)
+    {
+        $this->query['statement'] = 'UPDATE '. $this->query['table']  .' SET ';
+        $this->query['table'] ='';
+
+        $this->query['statement'] .= implode(', ', array_map(
+                                function ($v, $k) { return sprintf("%s = :%s",$k ,$k); },
+                                $data,
+                                array_keys($data)
+                            ));
+
+        $stmt = self::$db->prepare(implode(" ", $this->query));
+        $stmt->execute($data);
+        return true;
+    }
+
+    public function execute($query)
+    {
+        $stmt = self::$db->prepare($query);
+
+        return $stmt->execute();
+    }
+  
+}

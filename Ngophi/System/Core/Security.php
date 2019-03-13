@@ -1,13 +1,7 @@
 <?php
-
-/*
- * Mogh PHP Framework
- * Create & Developed By whintz 
- * https://github.com/momogie/Mogh
-*/
 namespace System\Core;
-
-class Security{
+class Security
+{
 
 	/**
 	* NOT DONE
@@ -80,5 +74,10 @@ class Security{
         }
 
         return $value;
+    }
+    
+    public static function UniqueID()
+    {
+        return base64_encode( md5(base64_encode(uniqid() . date("Y-m-d H:i:s") . mt_rand())));
     }
 }

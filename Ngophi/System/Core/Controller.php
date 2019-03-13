@@ -1,138 +1,68 @@
 <?php
-
-
-/*
- * Mogh PHP Framework
- * Create & Developed By whintz 
- * https://github.com/momogie/Mogh
-*/
 namespace System\Core;
+
 class Controller
-{	
-	
+{
+	public static $view;
 	function __construct()
 	{
+		self::$view = new View();
 	}
-	function GetInstance()
+
+	
+	public static function getInstance()
 	{
-		$this->post = (object)$_POST;
-		
-		if(!isset($this->view))
+		if (!isset(self::$view))
 		{
-			$this->view = new View();
+			self::$view = new View();
 		}
-		if(isset($this->viewbag))
-		{			
-			$this->viewbag = array();
-			$this->view->viewbag = (object)$this->viewbag; 
-
-			unset($this->viewbag);
-		}
-
-		return $this->view;
+		return self::$view;
 	}
 
-	function Title($name = null)
-	{
-		self::GetInstance()->Title($name);
-	}
-
-	function Layout($name)
-	{
-		self::GetInstance()->Layout($name);
-	}
-
-    
-	function View($name,$data = null,$layout=null,$pagetitle =null)
-	{
-		
-		if(isset($pagetitle))
-			self::GetInstance()->Title($pagetitle);
-		
-		if(isset($layout))
-			self::GetInstance()->Layout($layout);
-
-		return self::GetInstance()->Load($name,$data);
-	}	
 	
-	function Json($name = null,$data = null)
+	function __get($name)
 	{
-		self::GetInstance()->JSON($name,$data);
-	}
-	
-	function JsonResult($name = null,$data = null)
-	{
-		self::GetInstance()->JSON($name,$data);
-	}
-	
-	function CustomValidate($data)
-	{
-		$valid = true;
-		if(HTTP_POST)
+		if ($name == 'view')
 		{
-			foreach ($data as $key => $value) 
-			{
-				foreach ($value as $key2 => $value2)
-				{
-					$validateresult = Validator::Validate($key,$key2,$value2);
-
-					if(!$validateresult['isvalid'])
-					{
-						$valid = $validateresult['isvalid'];
-						self::GetInstance()->setValidationMessage($key, $validateresult['Message']);
-						break;
-					}
-					
-				}
-				if($valid)
-					self::GetInstance()->setValidationMessage($key, null);
-			}
+			return self::getInstance();
 		}
-		return $valid && HTTP_POST;
+		
+		return isset($_POST[$name]) ? $_POST[$name] : null ;
 	}
+
+
+	function Post($key)
+	{
+		if (array_key_exists($key, $_POST))
+		{
+			return $_POST[$key];
+		}
+		return null;
+	}
+
+	
+	function Get($key)
+	{
+		if (array_key_exists($key, $_GET))
+		{
+			return $_GET[$key];
+		}
+
+		return null;
+	}
+
+
 	function Validate($data)
 	{
-		$valid = true;
+		self::getInstance()->validationresult = [];
+		
 		if(HTTP_POST)
 		{
-			foreach ($data as $key => $value) 
-			{
-				if(!is_array($value))
-				{
-					foreach (explode('|', $value) as $key2 => $value2)
-					{
-						$validateresult = Validator::Validate($key,$value2);
-
-						if(!$validateresult['isvalid'])
-						{
-							$valid = $validateresult['isvalid'];
-							self::GetInstance()->setValidationMessage($key, $validateresult['Message']);
-							break;
-						}
-						
-					}
-				}
-				else
-				{
-					foreach ($value as $key2 => $value2)
-					{
-						$validateresult = Validator::Validate($key,$key2,$value2);
-
-						if(!$validateresult['isvalid'])
-						{
-							$valid = $validateresult['isvalid'];
-							self::GetInstance()->setValidationMessage($key, $validateresult['Message']);
-							break;
-						}
-						
-					}
-				}
-				
-				if($valid)
-					self::GetInstance()->setValidationMessage($key, null);
-			}
+			return Validator\Validate::Execute($data,self::getInstance()->validationresult);
 		}
-		return $valid && HTTP_POST;
+
+		return false;
 	}
 
+	
 }
